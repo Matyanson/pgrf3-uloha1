@@ -2,6 +2,7 @@ package app;
 
 import app.solid.Axis;
 import app.solid.Grid;
+import app.solid.GridStrip;
 import app.solid.Solid;
 import app.uniform_values.UniformFValues;
 import app.uniform_values.UniformInt1Values;
@@ -45,7 +46,7 @@ public class Renderer extends AbstractRenderer {
     public void init() {
         glClearColor(0.1f, 0.1f, 0.1f, 2.0f);
         glEnable(GL_DEPTH_TEST);
-        //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
         // Default camera
         Camera defCamera = new Camera()
@@ -69,23 +70,26 @@ public class Renderer extends AbstractRenderer {
 
         // Solids
         Axis axis = new Axis();
-        Grid plane = new Grid(2, 2);
+        Grid plane = new Grid(20, 20);
+        GridStrip planeStrip = new GridStrip(20, 20);
+        planeStrip.setModel(new Mat4Transl(2f, 0f, 0f));
         Grid sphere = new Grid(100, 100);
         sphere.setModel(new Mat4Scale(0.5f, 0.5f, 0.5f).mul(new Mat4Transl(0f, 0, 1f)));
-        solids = Arrays.asList(axis, plane, sphere);
+        solids = Arrays.asList(axis, plane, planeStrip, sphere);
 
         // Shader programs
         ShaderProgram programAxis = new ShaderProgram("/axis", 0);
-        ShaderProgram programGrid = new ShaderProgram("/grid", 1, 2);
+        ShaderProgram programGrid = new ShaderProgram("/grid", 1, 2, 3);
         programGrid.addUniform(new UniformInt1Values("uUseShadowMap",
-                1, 1, 0
+                1, 1, 1, 0
         ));
         programGrid.addUniform(new UniformInt1Values("uFuncType",
-                0, 0, 1
+                0, 0, 0, 1
         ));
         programGrid.addUniform(new UniformFValues("uBaseColor",
                 new Float[]{0.8f, 0.8f, 0.8f},
                 new Float[]{0.8f, 0.8f, 0.8f},
+                new Float[]{0.3f, 0.8f, 0.3f},
                 new Float[]{0.8f, 0.3f, 0.3f}
         ));
         shaderPrograms = Arrays.asList(programAxis, programGrid);
@@ -143,7 +147,7 @@ public class Renderer extends AbstractRenderer {
             int windowIndex,            int programIndex,       int solidIndex,
             SceneWindow sceneWindow,    ShaderProgram program,  Solid solid
     ) {
-        if(programIndex == 1) {
+        if(windowIndex == 0) {
             // save shadowMap to texture
             SceneWindow lightWindow = sceneWindowList.get(1);
             lightWindow.getRenderTarget()
