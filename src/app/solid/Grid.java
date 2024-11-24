@@ -2,6 +2,9 @@ package app.solid;
 
 import lwjglutils.OGLBuffers;
 
+import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
+import static org.lwjgl.opengl.GL11C.GL_LINES;
+
 public class Grid extends Solid{
 
     public Grid(int m, int n) {
@@ -41,5 +44,6 @@ public class Grid extends Solid{
         };
 
         buffers = new OGLBuffers(vb, attributes, ib);
+        topology = GL_TRIANGLES;
     }
 }

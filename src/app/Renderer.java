@@ -3,6 +3,8 @@ package app;
 import app.solid.Axis;
 import app.solid.Grid;
 import app.solid.Solid;
+import app.uniform_values.UniformFValues;
+import app.uniform_values.UniformInt1Values;
 import lwjglutils.*;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFWCursorPosCallback;
@@ -12,6 +14,7 @@ import transforms.*;
 
 import java.nio.DoubleBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.lwjgl.glfw.GLFW.*;
@@ -23,10 +26,10 @@ import static org.lwjgl.opengl.GL30.*;
 public class Renderer extends AbstractRenderer {
 
     // Solids
-    private Solid axis, plane, sphere;
+    private List<Solid> solids;
 
     // Shader programs
-    private int programAxis, programGrid;
+    private List<ShaderProgram> shaderPrograms;
 
     // SceneCameras
     private List<SceneWindow> sceneWindowList = new ArrayList<>();
@@ -65,15 +68,29 @@ public class Renderer extends AbstractRenderer {
         sceneWindowList.add(new SceneWindow(width, height, cameraLight, projLight));
 
         // Solids
-        axis = new Axis();
-        plane = new Grid(2, 2);
-        sphere = new Grid(100, 100);
+        Axis axis = new Axis();
+        Grid plane = new Grid(2, 2);
+        Grid sphere = new Grid(100, 100);
         sphere.setModel(new Mat4Scale(0.5f, 0.5f, 0.5f).mul(new Mat4Transl(0f, 0, 1f)));
+        solids = Arrays.asList(axis, plane, sphere);
 
         // Shader programs
-        programAxis = ShaderUtils.loadProgram("/axis");
-        programGrid = ShaderUtils.loadProgram("/grid");
+        ShaderProgram programAxis = new ShaderProgram("/axis", 0);
+        ShaderProgram programGrid = new ShaderProgram("/grid", 1, 2);
+        programGrid.addUniform(new UniformInt1Values("uUseShadowMap",
+                1, 1, 0
+        ));
+        programGrid.addUniform(new UniformInt1Values("uFuncType",
+                0, 0, 1
+        ));
+        programGrid.addUniform(new UniformFValues("uBaseColor",
+                new Float[]{0.8f, 0.8f, 0.8f},
+                new Float[]{0.8f, 0.8f, 0.8f},
+                new Float[]{0.8f, 0.3f, 0.3f}
+        ));
+        shaderPrograms = Arrays.asList(programAxis, programGrid);
 
+        // Viewer to display other textures
         viewer = new OGLTexture2D.Viewer();
     }
 
@@ -97,49 +114,39 @@ public class Renderer extends AbstractRenderer {
     }
 
 
-    private void drawScene(SceneWindow camera) {
-        // camera.getRenderTarget().bind();
+    private void drawScene(SceneWindow sceneWindow) {
         glViewport(0, 0, width, height);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Draw Axis
-        glUseProgram(programAxis);
-        setGlobalUniforms(camera, programAxis, axis);
-        axis.getBuffers().draw(GL_LINES, programAxis);
+        for (ShaderProgram program : shaderPrograms) {
+            glUseProgram(program.getProgramID());
+            setCameraUniforms(sceneWindow, program.getProgramID());
+            List<Integer> solidIndexes = program.getSolidIndexes();
+            for (int i : solidIndexes) {
+                Solid solid = solids.get(i);
+                setModelUniform(program.getProgramID(), solid);
+                program.applyUniforms(i);
+                solid.draw(program.getProgramID());
+            }
+        }
 
-        // Draw Plane
-        glUseProgram(programGrid);
-        setGlobalUniforms(camera, programGrid, plane);
-        glUniform1i(glGetUniformLocation(programGrid, "uUseShadowMap"), 1);
-        glUniform1i(glGetUniformLocation(programGrid, "uFuncType"), 0);
-        glUniform3f(glGetUniformLocation(programGrid, "uBaseColor"), 0.8f, 0.8f, 0.8f);
-        plane.getBuffers().draw(GL_TRIANGLES, programGrid);
-
-        // Draw Sphere
-        glUseProgram(programGrid);
-        setGlobalUniforms(camera, programGrid, sphere);
-        glUniform1i(glGetUniformLocation(programGrid, "uUseShadowMap"), 0);
-        glUniform1i(glGetUniformLocation(programGrid, "uFuncType"), 1);
-        glUniform3f(glGetUniformLocation(programGrid, "uBaseColor"), 0.8f, 0.3f, 0.3f);
-
-        SceneWindow lightCamera = sceneWindowList.get(1);
-        lightCamera.getRenderTarget().bindDepthTexture(programGrid, "shadowMap", 0);
-        // renderTarget.bindDepthTexture(programGrid, "shadowMap", 0);
-        glUniformMatrix4fv(
-                glGetUniformLocation(programGrid, "uVPLight"),
-                false,
-                lightCamera.getView().mul(lightCamera.getProjection()).floatArray()
-        );
-        sphere.getBuffers().draw(GL_TRIANGLES, programGrid);
+//        SceneWindow lightCamera = sceneWindowList.get(1);
+//        lightCamera.getRenderTarget().bindDepthTexture(programGrid, "shadowMap", 0);
+//        glUniformMatrix4fv(
+//                glGetUniformLocation(programGrid, "uVPLight"),
+//                false,
+//                lightCamera.getView().mul(lightCamera.getProjection()).floatArray()
+//        );
     }
 
-    private void setGlobalUniforms(SceneWindow camera, int shaderProgram, Solid solid) {
+    private void setCameraUniforms(SceneWindow sceneWindow, int shaderProgram) {
         int locUView = glGetUniformLocation(shaderProgram, "uView");
-        glUniformMatrix4fv(locUView, false, camera.getView().floatArray());
+        glUniformMatrix4fv(locUView, false, sceneWindow.getView().floatArray());
 
         int locUProj = glGetUniformLocation(shaderProgram, "uProj");
-        glUniformMatrix4fv(locUProj, false, camera.getProjection().floatArray());
-
+        glUniformMatrix4fv(locUProj, false, sceneWindow.getProjection().floatArray());
+    }
+    private void setModelUniform(int shaderProgram, Solid solid) {
         int locUModel = glGetUniformLocation(shaderProgram, "uModel");
         glUniformMatrix4fv(locUModel, false, solid.getModel().floatArray());
     }

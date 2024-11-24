@@ -2,6 +2,9 @@ package app.solid;
 
 import lwjglutils.OGLBuffers;
 
+import static org.lwjgl.opengl.GL11.GL_LINES;
+import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
+
 public class Axis extends Solid{
     public Axis() {
         // vytvořit vertex buffer
@@ -32,5 +35,6 @@ public class Axis extends Solid{
 
         // vytvořit OGLBuffers
         buffers = new OGLBuffers(vb, attributes, ib);
+        topology = GL_LINES;
     }
 }
