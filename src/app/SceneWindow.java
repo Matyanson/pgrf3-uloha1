@@ -8,12 +8,14 @@ public class SceneWindow {
 
     private Camera camera;
     private Mat4 projection;
+    private Mat4 projection2;
     private OGLRenderTarget renderTarget;
 
-    public SceneWindow(int width, int height, Camera camera, Mat4 projection) {
+    public SceneWindow(int width, int height, Camera camera, Mat4 projection, Mat4 projection2) {
         this.renderTarget = new OGLRenderTarget(width, height);
         this.camera = camera;
         this.projection = projection;
+        this.projection2 = projection2;
     }
 
     public SceneWindow(int width, int height) {
@@ -25,6 +27,7 @@ public class SceneWindow {
                 .withFirstPerson(false)
                 .withRadius(3);
         this.projection = new Mat4PerspRH(Math.toRadians(45), height / (float) width, 0.1, 100);
+        this.projection2 = new Mat4OrthoRH(1, 1, 0.1, 100);
     }
 
     public OGLRenderTarget getRenderTarget() {
@@ -53,5 +56,11 @@ public class SceneWindow {
 
     public Mat4 getView() {
         return this.camera.getViewMatrix();
+    }
+
+    public void switchProjection() {
+        Mat4 temp = projection;
+        projection = projection2;
+        projection2 = temp;
     }
 }

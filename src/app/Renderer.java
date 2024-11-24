@@ -64,7 +64,8 @@ public class Renderer extends AbstractRenderer {
                 .withFirstPerson(false)
                 .withRadius(3);
         Mat4PerspRH defProj = new Mat4PerspRH(Math.toRadians(45), height / (float) width, 0.1, 100);
-        sceneWindowList.add(new SceneWindow(width, height, defCamera, defProj));
+        Mat4 defProjOrth = new Mat4OrthoRH(1, 1, 0.1, 100);
+        sceneWindowList.add(new SceneWindow(width, height, defCamera, defProj, defProjOrth));
 
         // Shadow mapping camera
         Vec3D lightPosition = new Vec3D(0, 0, 1);
@@ -74,7 +75,8 @@ public class Renderer extends AbstractRenderer {
                 .withZenith(Math.toRadians(-90))
                 .withFirstPerson(true);
         Mat4 projLight = new Mat4OrthoRH(5, 5, 1, 20);
-        sceneWindowList.add(new SceneWindow(width, height, cameraLight, projLight));
+        Mat4 projOrthLight = new Mat4OrthoRH(1, 1, 0.1, 100);
+        sceneWindowList.add(new SceneWindow(width, height, cameraLight, projLight, projOrthLight));
 
         // Solids
         Axis axis = new Axis();
@@ -261,42 +263,45 @@ public class Renderer extends AbstractRenderer {
                     Optional<Vec3D> rightOpt = forward.cross(new Vec3D(0, 0, 1)).normalized();
                     Vec3D right = rightOpt.map(vec -> vec.mul(speed))
                             .orElse(new Vec3D(0));
-                            switch (key) {
-                        case GLFW_KEY_M:
-                            // Change PolygonMode
-                            Integer[] options = {GL_FILL, GL_LINE, GL_POINT};
-                            int index = Arrays.asList(options).indexOf(polygonMode);
-                            if (index < 0 || index == options.length - 1) {
-                                polygonMode = options[0];
-                            } else {
-                                polygonMode = options[index + 1];
-                            }
-                            glPolygonMode(GL_FRONT_AND_BACK, polygonMode);
-                            break;
-                        case GLFW_KEY_W:
-                            // Move forward
-                            selectedSceneWindow.setCamera(
-                                    camera.withPosition(camera.getPosition().add(forward))
-                            );
-                            break;
-                        case GLFW_KEY_A:
-                            // Move left
-                            selectedSceneWindow.setCamera(
-                                    camera.withPosition(camera.getPosition().sub(right))
-                            );
-                            break;
-                        case GLFW_KEY_S:
-                            // Move backward
-                            selectedSceneWindow.setCamera(
-                                    camera.withPosition(camera.getPosition().sub(forward))
-                            );
-                            break;
-                        case GLFW_KEY_D:
-                            // Move right
-                            selectedSceneWindow.setCamera(
-                                    camera.withPosition(camera.getPosition().add(right))
-                            );
-                            break;
+                        switch (key) {
+                            case GLFW_KEY_M:
+                                // Change PolygonMode
+                                Integer[] options = {GL_FILL, GL_LINE, GL_POINT};
+                                int index = Arrays.asList(options).indexOf(polygonMode);
+                                if (index < 0 || index == options.length - 1) {
+                                    polygonMode = options[0];
+                                } else {
+                                    polygonMode = options[index + 1];
+                                }
+                                glPolygonMode(GL_FRONT_AND_BACK, polygonMode);
+                                break;
+                            case GLFW_KEY_P:
+                                selectedSceneWindow.switchProjection();
+                                break;
+                            case GLFW_KEY_W:
+                                // Move forward
+                                selectedSceneWindow.setCamera(
+                                        camera.withPosition(camera.getPosition().add(forward))
+                                );
+                                break;
+                            case GLFW_KEY_A:
+                                // Move left
+                                selectedSceneWindow.setCamera(
+                                        camera.withPosition(camera.getPosition().sub(right))
+                                );
+                                break;
+                            case GLFW_KEY_S:
+                                // Move backward
+                                selectedSceneWindow.setCamera(
+                                        camera.withPosition(camera.getPosition().sub(forward))
+                                );
+                                break;
+                            case GLFW_KEY_D:
+                                // Move right
+                                selectedSceneWindow.setCamera(
+                                        camera.withPosition(camera.getPosition().add(right))
+                                );
+                                break;
                     }
                     break;
                 case GLFW_KEY_DOWN:
