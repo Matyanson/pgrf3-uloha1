@@ -42,7 +42,7 @@ public class Renderer extends AbstractRenderer {
 
     // Camera Controls
     boolean mouseButton1 = false;
-    int selectedCameraIndex = 0;
+    int selectedWindowIndex = 0;
     double ox, oy;
     double speed = 0.5;
 
@@ -203,7 +203,7 @@ public class Renderer extends AbstractRenderer {
                 glfwGetCursorPos(window, xBuffer, yBuffer);
                 double x = xBuffer.get(0);
                 double y = yBuffer.get(0);
-                SceneWindow selectedSceneWindow = sceneWindowList.get(selectedCameraIndex);
+                SceneWindow selectedSceneWindow = sceneWindowList.get(selectedWindowIndex);
                 selectedSceneWindow.setCamera(
                         selectedSceneWindow.getCamera()
                                 .addAzimuth((double) Math.PI * (ox - x) / width)
@@ -220,7 +220,7 @@ public class Renderer extends AbstractRenderer {
         @Override
         public void invoke(long window, double x, double y) {
             if (mouseButton1) {
-                SceneWindow selectedSceneWindow = sceneWindowList.get(selectedCameraIndex);
+                SceneWindow selectedSceneWindow = sceneWindowList.get(selectedWindowIndex);
                 selectedSceneWindow.setCamera(
                         selectedSceneWindow.getCamera()
                                 .addAzimuth((double) Math.PI * (ox - x) / width)
@@ -236,7 +236,7 @@ public class Renderer extends AbstractRenderer {
     private GLFWScrollCallback scrollCallback = new GLFWScrollCallback() {
         @Override
         public void invoke(long window, double dx, double dy) {
-            SceneWindow selectedSceneWindow = sceneWindowList.get(selectedCameraIndex);
+            SceneWindow selectedSceneWindow = sceneWindowList.get(selectedWindowIndex);
             if (dy < 0){
                 selectedSceneWindow.setCamera(
                         selectedSceneWindow.getCamera()
@@ -257,7 +257,7 @@ public class Renderer extends AbstractRenderer {
         public void invoke(long window, int key, int scancode, int action, int mods) {
             switch (action) {
                 case GLFW_PRESS:
-                    SceneWindow selectedSceneWindow = sceneWindowList.get(selectedCameraIndex);
+                    SceneWindow selectedSceneWindow = sceneWindowList.get(selectedWindowIndex);
                     Camera camera = selectedSceneWindow.getCamera();
                     Vec3D forward = camera.getViewVector().mul(speed);
                     Optional<Vec3D> rightOpt = forward.cross(new Vec3D(0, 0, 1)).normalized();
@@ -277,6 +277,13 @@ public class Renderer extends AbstractRenderer {
                                 break;
                             case GLFW_KEY_P:
                                 selectedSceneWindow.switchProjection();
+                                break;
+                            case GLFW_KEY_C:
+                                if(selectedWindowIndex >= sceneWindowList.size() - 1){
+                                    selectedWindowIndex = 0;
+                                } else {
+                                    selectedWindowIndex++;
+                                }
                                 break;
                             case GLFW_KEY_W:
                                 // Move forward
