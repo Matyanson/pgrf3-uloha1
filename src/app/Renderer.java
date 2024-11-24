@@ -18,6 +18,7 @@ import java.nio.DoubleBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
@@ -41,8 +42,9 @@ public class Renderer extends AbstractRenderer {
 
     // Camera Controls
     boolean mouseButton1 = false;
-    int selectedCameraIndex = 1;
+    int selectedCameraIndex = 0;
     double ox, oy;
+    double speed = 0.5;
 
     // Other Controls
     int polygonMode = GL_FILL;
@@ -253,7 +255,13 @@ public class Renderer extends AbstractRenderer {
         public void invoke(long window, int key, int scancode, int action, int mods) {
             switch (action) {
                 case GLFW_PRESS:
-                    switch (key) {
+                    SceneWindow selectedSceneWindow = sceneWindowList.get(selectedCameraIndex);
+                    Camera camera = selectedSceneWindow.getCamera();
+                    Vec3D forward = camera.getViewVector().mul(speed);
+                    Optional<Vec3D> rightOpt = forward.cross(new Vec3D(0, 0, 1)).normalized();
+                    Vec3D right = rightOpt.map(vec -> vec.mul(speed))
+                            .orElse(new Vec3D(0));
+                            switch (key) {
                         case GLFW_KEY_M:
                             // Change PolygonMode
                             Integer[] options = {GL_FILL, GL_LINE, GL_POINT};
@@ -265,6 +273,35 @@ public class Renderer extends AbstractRenderer {
                             }
                             glPolygonMode(GL_FRONT_AND_BACK, polygonMode);
                             break;
+                        case GLFW_KEY_W:
+                            // Move forward
+                            selectedSceneWindow.setCamera(
+                                    camera.withPosition(camera.getPosition().add(forward))
+                            );
+                            break;
+                        case GLFW_KEY_A:
+                            // Move left
+                            selectedSceneWindow.setCamera(
+                                    camera.withPosition(camera.getPosition().sub(right))
+                            );
+                            break;
+                        case GLFW_KEY_S:
+                            // Move backward
+                            selectedSceneWindow.setCamera(
+                                    camera.withPosition(camera.getPosition().sub(forward))
+                            );
+                            break;
+                        case GLFW_KEY_D:
+                            // Move right
+                            selectedSceneWindow.setCamera(
+                                    camera.withPosition(camera.getPosition().add(right))
+                            );
+                            break;
+                    }
+                    break;
+                case GLFW_KEY_DOWN:
+                    switch (key) {
+
                     }
                     break;
             }
