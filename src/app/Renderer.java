@@ -95,48 +95,66 @@ public class Renderer extends AbstractRenderer {
     }
 
     public void display() {
-        // draw the first SceneWindow to the Screen
-        SceneWindow firstCamera = sceneWindowList.get(0);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        drawScene(firstCamera);
-
         // draw the rest into textures
-        for (int i = 1; i < sceneWindowList.size(); i++) {
-            SceneWindow camera = sceneWindowList.get(i);
-            camera.getRenderTarget().bind();
-            drawScene(camera);
+        for (int i = 0; i < sceneWindowList.size(); i++) {
+            drawScene(i);
         }
 
         // Draw the shadowMap in the corner
-        SceneWindow secondCamera = sceneWindowList.get(1);
+        SceneWindow lightWindow = sceneWindowList.get(1);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        viewer.view(secondCamera.getRenderTarget().getDepthTexture(), -1, -1, 0.5);
+        viewer.view(lightWindow.getRenderTarget().getDepthTexture(), -1, -1, 0.5);
     }
 
 
-    private void drawScene(SceneWindow sceneWindow) {
+    private void drawScene(int sceneWindowIndex) {
+        // Bind buffer / renderTarget
+        SceneWindow sceneWindow = sceneWindowList.get(sceneWindowIndex);
+        if(sceneWindowIndex == 0)
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        else
+            sceneWindow.getRenderTarget().bind();
+
+        // Setup canvas
         glViewport(0, 0, width, height);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        for (ShaderProgram program : shaderPrograms) {
+
+        for (int i = 0; i < shaderPrograms.size(); i++) {
+            ShaderProgram program = shaderPrograms.get(i);
             glUseProgram(program.getProgramID());
             setCameraUniforms(sceneWindow, program.getProgramID());
+
             List<Integer> solidIndexes = program.getSolidIndexes();
-            for (int i : solidIndexes) {
-                Solid solid = solids.get(i);
+            for (int j : solidIndexes) {
+                Solid solid = solids.get(j);
+                // setup uniforms
                 setModelUniform(program.getProgramID(), solid);
-                program.applyUniforms(i);
+                program.applyUniforms(j);
+                // Specific/Complex behaviour
+                manualSetupBeforeDraw(sceneWindowIndex, i, j, sceneWindow, program, solid);
+                // draw
                 solid.draw(program.getProgramID());
             }
         }
+    }
 
-//        SceneWindow lightCamera = sceneWindowList.get(1);
-//        lightCamera.getRenderTarget().bindDepthTexture(programGrid, "shadowMap", 0);
-//        glUniformMatrix4fv(
-//                glGetUniformLocation(programGrid, "uVPLight"),
-//                false,
-//                lightCamera.getView().mul(lightCamera.getProjection()).floatArray()
-//        );
+    private void manualSetupBeforeDraw(
+            int windowIndex,            int programIndex,       int solidIndex,
+            SceneWindow sceneWindow,    ShaderProgram program,  Solid solid
+    ) {
+        if(programIndex == 1) {
+            // save shadowMap to texture
+            SceneWindow lightWindow = sceneWindowList.get(1);
+            lightWindow.getRenderTarget()
+                    .bindDepthTexture(program.getProgramID(), "shadowMap", 0);
+            // save light VP matrix to uniform
+            glUniformMatrix4fv(
+                    glGetUniformLocation(program.getProgramID(), "uVPLight"),
+                    false,
+                    lightWindow.getView().mul(lightWindow.getProjection()).floatArray()
+            );
+        }
     }
 
     private void setCameraUniforms(SceneWindow sceneWindow, int shaderProgram) {
