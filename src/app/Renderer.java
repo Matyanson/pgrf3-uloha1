@@ -9,6 +9,7 @@ import app.uniform_values.UniformInt1Values;
 import lwjglutils.*;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFWCursorPosCallback;
+import org.lwjgl.glfw.GLFWKeyCallback;
 import org.lwjgl.glfw.GLFWMouseButtonCallback;
 import org.lwjgl.glfw.GLFWScrollCallback;
 import transforms.*;
@@ -35,18 +36,23 @@ public class Renderer extends AbstractRenderer {
     // SceneCameras
     private List<SceneWindow> sceneWindowList = new ArrayList<>();
 
-    // Camera Controls
-    boolean mouseButton1 = false;
-    int selectedCameraIndex = 0;
-    double ox, oy;
-
     // Shadow mapping
     private OGLTexture2D.Viewer viewer;
 
+    // Camera Controls
+    boolean mouseButton1 = false;
+    int selectedCameraIndex = 1;
+    double ox, oy;
+
+    // Other Controls
+    int polygonMode = GL_FILL;
+
+
     public void init() {
+        // Behaviour
         glClearColor(0.1f, 0.1f, 0.1f, 2.0f);
         glEnable(GL_DEPTH_TEST);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         // Default camera
         Camera defCamera = new Camera()
@@ -242,6 +248,29 @@ public class Renderer extends AbstractRenderer {
         }
     };
 
+    private GLFWKeyCallback keyCallback = new GLFWKeyCallback() {
+        @Override
+        public void invoke(long window, int key, int scancode, int action, int mods) {
+            switch (action) {
+                case GLFW_PRESS:
+                    switch (key) {
+                        case GLFW_KEY_M:
+                            // Change PolygonMode
+                            Integer[] options = {GL_FILL, GL_LINE, GL_POINT};
+                            int index = Arrays.asList(options).indexOf(polygonMode);
+                            if (index < 0 || index == options.length - 1) {
+                                polygonMode = options[0];
+                            } else {
+                                polygonMode = options[index + 1];
+                            }
+                            glPolygonMode(GL_FRONT_AND_BACK, polygonMode);
+                            break;
+                    }
+                    break;
+            }
+        }
+    };
+
 
     @Override
     public GLFWMouseButtonCallback getMouseCallback() {
@@ -258,5 +287,8 @@ public class Renderer extends AbstractRenderer {
         return scrollCallback;
     }
 
+    public GLFWKeyCallback getKeyCallback() {
+        return keyCallback;
+    }
 
 }
