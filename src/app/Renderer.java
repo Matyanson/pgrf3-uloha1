@@ -6,13 +6,13 @@ import app.solid.Solid;
 import lwjglutils.*;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFWCursorPosCallback;
-import org.lwjgl.glfw.GLFWKeyCallback;
 import org.lwjgl.glfw.GLFWMouseButtonCallback;
 import org.lwjgl.glfw.GLFWScrollCallback;
-import org.lwjgl.glfw.GLFWWindowSizeCallback;
 import transforms.*;
 
 import java.nio.DoubleBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
@@ -25,19 +25,18 @@ public class Renderer extends AbstractRenderer {
     // Solids
     private Solid axis, plane, sphere;
 
-    // Shaders
+    // Shader programs
     private int programAxis, programGrid;
 
-    // Camera
-    private Camera camera;
-    private Mat4PerspRH proj;
+    // SceneCameras
+    private List<SceneWindow> sceneWindowList = new ArrayList<>();
+
+    // Camera Controls
     boolean mouseButton1 = false;
+    int selectedCameraIndex = 0;
     double ox, oy;
 
     // Shadow mapping
-    private Mat4OrthoRH projLight;
-    private Mat4 viewLight;
-    private OGLRenderTarget renderTarget;
     private OGLTexture2D.Viewer viewer;
 
     public void init() {
@@ -45,90 +44,103 @@ public class Renderer extends AbstractRenderer {
         glEnable(GL_DEPTH_TEST);
         //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-        camera = new Camera()
+        // Default camera
+        Camera defCamera = new Camera()
                 .withPosition(new Vec3D(0, 0, 0))
                 .withAzimuth(Math.toRadians(90))
                 .withZenith(Math.toRadians(-75))
                 .withFirstPerson(false)
                 .withRadius(3);
+        Mat4PerspRH defProj = new Mat4PerspRH(Math.toRadians(45), height / (float) width, 0.1, 100);
+        sceneWindowList.add(new SceneWindow(width, height, defCamera, defProj));
 
-        proj = new Mat4PerspRH(Math.toRadians(45), height / (float) width, 0.1, 100);
+        // Shadow mapping camera
+        Vec3D lightPosition = new Vec3D(0, 0, 1);
+        Camera cameraLight = new Camera()
+                .withPosition(lightPosition)
+                .withAzimuth(Math.toRadians(90))
+                .withZenith(Math.toRadians(-90))
+                .withFirstPerson(true);
+        Mat4 projLight = new Mat4OrthoRH(5, 5, 1, 20);
+        sceneWindowList.add(new SceneWindow(width, height, cameraLight, projLight));
 
+        // Solids
         axis = new Axis();
         plane = new Grid(2, 2);
         sphere = new Grid(100, 100);
-        sphere.setModel(new Mat4Scale(0.5f, 0.5f, 0.5f).mul(new Mat4Transl(0f, 0, 0.7f)));
+        sphere.setModel(new Mat4Scale(0.5f, 0.5f, 0.5f).mul(new Mat4Transl(0f, 0, 1f)));
 
-        // načíst shaderový program
+        // Shader programs
         programAxis = ShaderUtils.loadProgram("/axis");
         programGrid = ShaderUtils.loadProgram("/grid");
-
-        // Shadow mapping
-        renderTarget = new OGLRenderTarget(width, height);
-        projLight = new Mat4OrthoRH(5, 5, 1, 20);
-        Vec3D lightPosition = new Vec3D(0, 0, 1);
-        viewLight = new Mat4ViewRH(lightPosition, lightPosition.mul(-1), new Vec3D(0, 1, 0));
 
         viewer = new OGLTexture2D.Viewer();
     }
 
     public void display() {
-        renderTarget.bind();
-        drawScene(true);
-
+        // draw the first SceneWindow to the Screen
+        SceneWindow firstCamera = sceneWindowList.get(0);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        drawScene(false);
+        drawScene(firstCamera);
 
-        viewer.view(renderTarget.getDepthTexture(), -1, -1, 0.5);
+        // draw the rest into textures
+        for (int i = 1; i < sceneWindowList.size(); i++) {
+            SceneWindow camera = sceneWindowList.get(i);
+            camera.getRenderTarget().bind();
+            drawScene(camera);
+        }
+
+        // Draw the shadowMap in the corner
+        SceneWindow secondCamera = sceneWindowList.get(1);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        viewer.view(secondCamera.getRenderTarget().getDepthTexture(), -1, -1, 0.5);
     }
 
 
-    private void drawScene(boolean drawFromLight) {
+    private void drawScene(SceneWindow camera) {
+        // camera.getRenderTarget().bind();
         glViewport(0, 0, width, height);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Draw axis
-        if(!drawFromLight) {
-            glUseProgram(programAxis);
-            setGlobalUniforms(axis, programAxis, drawFromLight);
-            axis.getBuffers().draw(GL_LINES, programAxis);
-        }
+        // Draw Axis
+        glUseProgram(programAxis);
+        setGlobalUniforms(camera, programAxis, axis);
+        axis.getBuffers().draw(GL_LINES, programAxis);
 
-        // Draw grid
+        // Draw Plane
         glUseProgram(programGrid);
-        setGlobalUniforms(plane, programGrid, drawFromLight);
+        setGlobalUniforms(camera, programGrid, plane);
         glUniform1i(glGetUniformLocation(programGrid, "uUseShadowMap"), 1);
         glUniform1i(glGetUniformLocation(programGrid, "uFuncType"), 0);
         glUniform3f(glGetUniformLocation(programGrid, "uBaseColor"), 0.8f, 0.8f, 0.8f);
         plane.getBuffers().draw(GL_TRIANGLES, programGrid);
 
-        // Draw grid
+        // Draw Sphere
         glUseProgram(programGrid);
-        setGlobalUniforms(sphere, programGrid, drawFromLight);
+        setGlobalUniforms(camera, programGrid, sphere);
         glUniform1i(glGetUniformLocation(programGrid, "uUseShadowMap"), 0);
         glUniform1i(glGetUniformLocation(programGrid, "uFuncType"), 1);
         glUniform3f(glGetUniformLocation(programGrid, "uBaseColor"), 0.8f, 0.3f, 0.3f);
-        if(!drawFromLight) {
-            renderTarget.getDepthTexture().bind(programGrid, "shadowMap", 0);
-            glUniformMatrix4fv(glGetUniformLocation(programGrid, "uVPLight"), false, (viewLight.mul(projLight)).floatArray());
-        }
+
+        SceneWindow lightCamera = sceneWindowList.get(1);
+        lightCamera.getRenderTarget().bindDepthTexture(programGrid, "shadowMap", 0);
+        // renderTarget.bindDepthTexture(programGrid, "shadowMap", 0);
+        glUniformMatrix4fv(
+                glGetUniformLocation(programGrid, "uVPLight"),
+                false,
+                lightCamera.getView().mul(lightCamera.getProjection()).floatArray()
+        );
         sphere.getBuffers().draw(GL_TRIANGLES, programGrid);
     }
 
-    private void setGlobalUniforms(Solid solid, int shaderProgram, boolean drawFromLight) {
+    private void setGlobalUniforms(SceneWindow camera, int shaderProgram, Solid solid) {
         int locUView = glGetUniformLocation(shaderProgram, "uView");
+        glUniformMatrix4fv(locUView, false, camera.getView().floatArray());
+
         int locUProj = glGetUniformLocation(shaderProgram, "uProj");
+        glUniformMatrix4fv(locUProj, false, camera.getProjection().floatArray());
+
         int locUModel = glGetUniformLocation(shaderProgram, "uModel");
-
-        if (drawFromLight)
-            glUniformMatrix4fv(locUView, false, viewLight.floatArray());
-        else glUniformMatrix4fv(locUView, false, camera.getViewMatrix().floatArray());
-
-        if (drawFromLight)
-            glUniformMatrix4fv(locUProj, false, projLight.floatArray());
-        else
-            glUniformMatrix4fv(locUProj, false, proj.floatArray());
-
         glUniformMatrix4fv(locUModel, false, solid.getModel().floatArray());
     }
 
@@ -152,8 +164,12 @@ public class Renderer extends AbstractRenderer {
                 glfwGetCursorPos(window, xBuffer, yBuffer);
                 double x = xBuffer.get(0);
                 double y = yBuffer.get(0);
-                camera = camera.addAzimuth((double) Math.PI * (ox - x) / width)
-                        .addZenith((double) Math.PI * (oy - y) / width);
+                SceneWindow selectedSceneWindow = sceneWindowList.get(selectedCameraIndex);
+                selectedSceneWindow.setCamera(
+                        selectedSceneWindow.getCamera()
+                                .addAzimuth((double) Math.PI * (ox - x) / width)
+                                .addZenith((double) Math.PI * (oy - y) / width)
+                );
                 ox = x;
                 oy = y;
             }
@@ -165,8 +181,12 @@ public class Renderer extends AbstractRenderer {
         @Override
         public void invoke(long window, double x, double y) {
             if (mouseButton1) {
-                camera = camera.addAzimuth((double) Math.PI * (ox - x) / width)
-                        .addZenith((double) Math.PI * (oy - y) / width);
+                SceneWindow selectedSceneWindow = sceneWindowList.get(selectedCameraIndex);
+                selectedSceneWindow.setCamera(
+                        selectedSceneWindow.getCamera()
+                                .addAzimuth((double) Math.PI * (ox - x) / width)
+                                .addZenith((double) Math.PI * (oy - y) / width)
+                );
                 ox = x;
                 oy = y;
             }
@@ -177,11 +197,19 @@ public class Renderer extends AbstractRenderer {
     private GLFWScrollCallback scrollCallback = new GLFWScrollCallback() {
         @Override
         public void invoke(long window, double dx, double dy) {
-            if (dy < 0)
-                camera = camera.mulRadius(0.9f);
-            else
-                camera = camera.mulRadius(1.1f);
-
+            SceneWindow selectedSceneWindow = sceneWindowList.get(selectedCameraIndex);
+            if (dy < 0){
+                selectedSceneWindow.setCamera(
+                        selectedSceneWindow.getCamera()
+                                .mulRadius(0.9f)
+                );
+            }
+            else{
+                selectedSceneWindow.setCamera(
+                        selectedSceneWindow.getCamera()
+                                .mulRadius(1.1f)
+                );
+            }
         }
     };
 
