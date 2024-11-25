@@ -7,13 +7,14 @@ uniform mat4 uView;
 uniform mat4 uProj;
 uniform mat4 uVPLight;
 uniform vec3 uLightPos;
+uniform vec3 uViewPos;
 uniform float uTime;
 uniform int uFuncType;
 uniform int uAnimateType;
 
 out vec3 lightVector;
 out vec3 normalVector;
-out vec3 viewDir;
+out vec3 viewVector;
 out vec2 texCoord;
 out vec4 shadowCoord;
 
@@ -70,20 +71,26 @@ vec3 getNormal(float x, float y) {
 
 void main()
 {
-    vec3 pos = func(inPosition.x, inPosition.y);
-    pos = animate(pos);
-    gl_Position = uProj * uView * uModel * vec4(pos, 1);
-
-    lightVector = uLightPos - pos;
-    normalVector = normalize(getNormal(inPosition.x, inPosition.y));
-    normalVector = inverse(transpose(mat3(uView * uModel))) * normalVector;
-    normalVector = normalize(normalVector);
     texCoord = inPosition;
 
-    // vec4 viewPos = vec4(pos, 0.0);
-    vec4 viewPos = vec4(pos, 1.0);
-    viewPos = uView * uModel * viewPos;
-    viewDir = -vec3(viewPos);
+    vec3 pos = func(inPosition.x, inPosition.y);
+    pos = animate(pos);
+
+    vec4 worldPos = vec4(pos, 1.0);
+    worldPos = uModel * worldPos;
+    gl_Position = uProj * uView * worldPos;
+
+
+    normalVector = getNormal(inPosition.x, inPosition.y);
+    normalVector = inverse(transpose(mat3(uView * uModel))) * normalVector;
+    normalVector = normalVector;
+
+    vec3 lightVectorWorld = uLightPos - worldPos.xyz;
+    lightVector = mat3(uView) * lightVectorWorld;
+
+    vec3 viewVectorWorld = uViewPos - worldPos.xyz;
+    viewVector = mat3(uView) * viewVectorWorld;
+
 
     mat4 depthBiasMVP = biasMatrix * uVPLight;
     shadowCoord = depthBiasMVP * (uModel * vec4(pos, 1));

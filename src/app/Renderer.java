@@ -202,17 +202,6 @@ public class Renderer extends AbstractRenderer {
                     false,
                     lightWindow.getView().mul(lightWindow.getProjection()).floatArray()
             );
-            // save light position to uniform
-            Vec3D lightPosition = lightWindow.getCamera().getPosition();
-            glUniformMatrix4fv(
-                    glGetUniformLocation(program.getProgramID(), "uLightPos"),
-                    false,
-                    new float[]{
-                            (float)lightPosition.getX(),
-                            (float)lightPosition.getY(),
-                            (float)lightPosition.getZ()
-                    }
-            );
         }
     }
 
@@ -222,6 +211,21 @@ public class Renderer extends AbstractRenderer {
 
         int locUProj = glGetUniformLocation(shaderProgram, "uProj");
         glUniformMatrix4fv(locUProj, false, sceneWindow.getProjection().floatArray());
+
+        // save light position to uniform
+        SceneWindow lightWindow = sceneWindowList.get(1);
+        Vec3D lightPosition = lightWindow.getCamera().getPosition();
+        int locLightPos = glGetUniformLocation(shaderProgram, "uLightPos");
+        glUniform3f(locLightPos,
+                    (float)lightPosition.getX(), (float)lightPosition.getY(), (float)lightPosition.getZ()
+        );
+
+        // save cam position to uniform
+        int locUViewPos = glGetUniformLocation(shaderProgram, "uViewPos");
+        Vec3D camPosition = sceneWindow.getCamera().getPosition();
+        glUniform3f(locUViewPos,
+                (float)camPosition.getX(), (float)camPosition.getY(), (float)camPosition.getZ()
+        );
 
         float time = (float)lastTime / 1_000_000_000.0f;
         int locUTime = glGetUniformLocation(shaderProgram, "uTime");
