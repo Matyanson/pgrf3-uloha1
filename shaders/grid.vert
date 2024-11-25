@@ -60,6 +60,7 @@ void main()
 
     lightVector = lightPosition - pos;
     normalVector = getNormal(inPosition.x, inPosition.y);
+    normalVector = inverse(transpose(mat3(uView * uModel))) * normalVector;
     texCoord = inPosition;
 
     mat4 depthBiasMVP = biasMatrix * uVPLight;
