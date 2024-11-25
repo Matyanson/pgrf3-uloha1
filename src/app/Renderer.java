@@ -48,6 +48,7 @@ public class Renderer extends AbstractRenderer {
 
     // Other Controls
     int polygonMode = GL_FILL;
+    private long lastTime = 0;
 
 
     public void init() {
@@ -55,6 +56,7 @@ public class Renderer extends AbstractRenderer {
         glClearColor(0.1f, 0.1f, 0.1f, 2.0f);
         glEnable(GL_DEPTH_TEST);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        lastTime = System.nanoTime();
 
         // Default camera
         Camera defCamera = new Camera()
@@ -68,7 +70,7 @@ public class Renderer extends AbstractRenderer {
         sceneWindowList.add(new SceneWindow(width, height, defCamera, defProj, defProjOrth));
 
         // Shadow mapping camera
-        Vec3D lightPosition = new Vec3D(0, 0, 1);
+        Vec3D lightPosition = new Vec3D(0, 0, 10);
         Camera cameraLight = new Camera()
                 .withPosition(lightPosition)
                 .withAzimuth(Math.toRadians(90))
@@ -118,6 +120,20 @@ public class Renderer extends AbstractRenderer {
         SceneWindow lightWindow = sceneWindowList.get(1);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         viewer.view(lightWindow.getRenderTarget().getDepthTexture(), -1, -1, 0.5);
+
+        // update time
+        long currentTime = System.nanoTime();
+        float dt = (currentTime - lastTime) / 1_000_000_000.0f;
+        lastTime = currentTime;
+        animate(dt);
+    }
+
+    private void animate(float dt) {
+        float time = (float)lastTime / 1_000_000_000.0f;
+        float xPosition = (float) Math.sin(time) * 1f;
+        float yPosition = (float) Math.cos(time) * 0.5f;
+        Solid solid = solids.get(3);
+        solid.setModel(new Mat4Scale(0.5f, 0.5f, 0.5f).mul(new Mat4Transl(xPosition, yPosition, 1f)));
     }
 
 
