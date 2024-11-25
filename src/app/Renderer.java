@@ -66,9 +66,9 @@ public class Renderer extends AbstractRenderer {
                 .withZenith(Math.toRadians(-75))
                 .withFirstPerson(false)
                 .withRadius(3);
-        Mat4PerspRH defProj = new Mat4PerspRH(Math.toRadians(45), height / (float) width, 0.1, 100);
+        Mat4PerspRH defProjPersp = new Mat4PerspRH(Math.toRadians(45), height / (float) width, 0.1, 100);
         Mat4 defProjOrth = new Mat4OrthoRH(1, 1, 0.1, 100);
-        sceneWindowList.add(new SceneWindow(width, height, defCamera, defProj, defProjOrth));
+        sceneWindowList.add(new SceneWindow(width, height, defCamera, defProjPersp, defProjOrth));
 
         // Shadow mapping camera
         Vec3D lightPosition = new Vec3D(0, 0, 10);
@@ -77,42 +77,50 @@ public class Renderer extends AbstractRenderer {
                 .withAzimuth(Math.toRadians(90))
                 .withZenith(Math.toRadians(-90))
                 .withFirstPerson(true);
-        Mat4PerspRH projLight = new Mat4PerspRH(Math.toRadians(45), height / (float) width, 1, 2);
+        Mat4PerspRH projLightPersp = new Mat4PerspRH(Math.toRadians(45), height / (float) width, 1, 2);
         Mat4 projOrthLight = new Mat4OrthoRH(5, 5, 1, 20);
-        sceneWindowList.add(new SceneWindow(width, height, cameraLight, projLight, projOrthLight));
+        sceneWindowList.add(new SceneWindow(width, height, cameraLight, projOrthLight, projLightPersp));
 
         // Solids
         Axis axis = new Axis();
         Grid plane = new Grid(20, 20);
         GridStrip planeStrip = new GridStrip(20, 20);
         planeStrip.setModel(new Mat4Transl(2f, 0f, 0f));
-        Grid sphere = new Grid(100, 100);
-        sphere.setModel(new Mat4Scale(0.5f, 0.5f, 0.5f).mul(new Mat4Transl(0f, 0, 1f)));
-        solids = Arrays.asList(axis, plane, planeStrip, sphere);
+        Grid sphereRed = new Grid(100, 100);
+        sphereRed.setModel(new Mat4Scale(0.5f, 0.5f, 0.5f).mul(new Mat4Transl(0f, 0, 1f)));
+        Grid sphereBlue = new Grid(20, 20);
+        sphereBlue.setModel(new Mat4Scale(0.4f, 0.4f, 0.4f).mul(new Mat4Transl(1f, 0, 0.4f)));
+        solids = Arrays.asList(axis, plane, planeStrip, sphereRed, sphereBlue);
 
         // Shader programs
         ShaderProgram programAxis = new ShaderProgram("/axis", 0);
-        ShaderProgram programGrid = new ShaderProgram("/grid", 1, 2, 3);
+        ShaderProgram programGrid = new ShaderProgram("/grid", 1, 2, 3, 4);
         programGrid.addUniform(new UniformInt1Values("uUseShadowMap",
-                1, 1, 0
+                1, 1, 1, 1
         ));
         programGrid.addUniform(new UniformInt1Values("uFuncType",
-                0, 0, 1
+                0, 0, 1, 1
+        ));
+        programGrid.addUniform(new UniformInt1Values("uAnimateType",
+                0, 0, 0, 1
         ));
         programGrid.addUniform(new UniformFValues("uBaseColor",
                 new Float[]{0.8f, 0.8f, 0.8f},
                 new Float[]{0.3f, 0.8f, 0.3f},
-                new Float[]{0.8f, 0.3f, 0.3f}
+                new Float[]{0.8f, 0.3f, 0.3f},
+                new Float[]{0.3f, 0.3f, 0.8f}
         ));
         programGrid.addUniform(new UniformF1Values( "uSpecStrength",
                 0.2f,
                 0.4f,
-                0.9f
+                0.9f,
+                1f
         ));
         programGrid.addUniform(new UniformF1Values( "uShininess",
                 7f,
                 30f,
-                200f
+                200f,
+                400f
         ));
         shaderPrograms = Arrays.asList(programAxis, programGrid);
 
@@ -163,7 +171,7 @@ public class Renderer extends AbstractRenderer {
         for (int i = 0; i < shaderPrograms.size(); i++) {
             ShaderProgram program = shaderPrograms.get(i);
             glUseProgram(program.getProgramID());
-            setCameraUniforms(sceneWindow, program.getProgramID());
+            setGlobalUniforms(sceneWindow, program.getProgramID());
 
             List<Integer> solidIndexes = program.getSolidIndexes();
             for (int j : solidIndexes) {
@@ -208,12 +216,16 @@ public class Renderer extends AbstractRenderer {
         }
     }
 
-    private void setCameraUniforms(SceneWindow sceneWindow, int shaderProgram) {
+    private void setGlobalUniforms(SceneWindow sceneWindow, int shaderProgram) {
         int locUView = glGetUniformLocation(shaderProgram, "uView");
         glUniformMatrix4fv(locUView, false, sceneWindow.getView().floatArray());
 
         int locUProj = glGetUniformLocation(shaderProgram, "uProj");
         glUniformMatrix4fv(locUProj, false, sceneWindow.getProjection().floatArray());
+
+        float time = (float)lastTime / 1_000_000_000.0f;
+        int locUTime = glGetUniformLocation(shaderProgram, "uTime");
+        glUniform1f(locUTime, time);
 
     }
     private void setModelUniform(int shaderProgram, Solid solid) {
