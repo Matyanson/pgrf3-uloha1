@@ -4,6 +4,7 @@ import app.solid.Axis;
 import app.solid.Grid;
 import app.solid.GridStrip;
 import app.solid.Solid;
+import app.uniform_values.UniformF1Values;
 import app.uniform_values.UniformFValues;
 import app.uniform_values.UniformInt1Values;
 import lwjglutils.*;
@@ -93,16 +94,25 @@ public class Renderer extends AbstractRenderer {
         ShaderProgram programAxis = new ShaderProgram("/axis", 0);
         ShaderProgram programGrid = new ShaderProgram("/grid", 1, 2, 3);
         programGrid.addUniform(new UniformInt1Values("uUseShadowMap",
-                1, 1, 1, 0
+                1, 1, 0
         ));
         programGrid.addUniform(new UniformInt1Values("uFuncType",
-                0, 0, 0, 1
+                0, 0, 1
         ));
         programGrid.addUniform(new UniformFValues("uBaseColor",
                 new Float[]{0.8f, 0.8f, 0.8f},
-                new Float[]{0.8f, 0.8f, 0.8f},
                 new Float[]{0.3f, 0.8f, 0.3f},
                 new Float[]{0.8f, 0.3f, 0.3f}
+        ));
+        programGrid.addUniform(new UniformF1Values( "uSpecStrength",
+                0.2f,
+                0.4f,
+                0.9f
+        ));
+        programGrid.addUniform(new UniformF1Values( "uShininess",
+                7f,
+                30f,
+                200f
         ));
         shaderPrograms = Arrays.asList(programAxis, programGrid);
 

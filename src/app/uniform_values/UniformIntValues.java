@@ -4,8 +4,8 @@ import static org.lwjgl.opengl.GL20.*;
 
 public class UniformIntValues extends UniformValues<Integer[]> {
 
-    public UniformIntValues(String name, Integer[] defaultValue, Integer[]... values) {
-        super(name, defaultValue, values);
+    public UniformIntValues(String name, Integer[]... values) {
+        super(name, values);
     }
 
     @Override

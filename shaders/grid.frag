@@ -1,6 +1,7 @@
 #version 330
 
 in vec2 vertPos;
+in vec3 viewDir;
 in vec2 texCoord;
 in vec4 shadowCoord;
 
@@ -8,28 +9,36 @@ in vec3 lightVector;
 in vec3 normalVector;
 
 uniform vec3 uBaseColor;
+uniform float uSpecStrength;
+uniform float uShininess;
 uniform sampler2D shadowMap;
 uniform int uUseShadowMap;
 
 out vec4 outColor;
 
-vec3 ambientColor = vec3(0.8, 0.8, 0.8);
-vec3 diffuseColor = vec3(1, 1, 1);
-
 void main()
 {
-    //vec3 baseColor = vec3(0.8, 0.8, 0.8);
+    // Setup directions
+    vec3 normalDir = normalize(normalVector);
+    vec3 lightDir = normalize(lightVector);
+    // vec3 viewDir = normalize(uViewPos - vertPos);
+
+    // Base color
     vec3 baseColor = uBaseColor;
 
-    vec3 ld = normalize(lightVector);
-    vec3 nd = normalize(normalVector);
-    float NDotL = max(dot(nd, ld), 0.0);
-    vec3 totalDiffuse = NDotL * diffuseColor;
+    // Ambient
+    vec3 ambient = vec3(0.8, 0.8, 0.8);
 
-    //outColor = vec4((ambientColor + totalDiffuse) * baseColor.rgb, 1);
-    //outColor = vec4(baseColor, 1);
-    //outColor = vec4(nd, 1);
-    //outColor = vec4(vertPos, 0, 1);
+    // Diffuse
+    float NdotL = max(dot(normalDir, lightDir), 0.0);
+    float diff = NdotL;
+
+    // Specular
+    vec3 reflectDir = reflect(-lightDir, normalDir);
+    float VdotR = max(dot(viewDir, reflectDir), 0.0);
+    float spec = uSpecStrength * pow(VdotR, uShininess);
+
+    baseColor = baseColor * vec3(1.0, 1.0, 0.8) * (ambient + diff + spec);
 
     float visibility = 1;
     float bias = 0.005;

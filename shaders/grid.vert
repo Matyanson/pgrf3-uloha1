@@ -11,6 +11,7 @@ uniform int uFuncType;
 
 out vec3 lightVector;
 out vec3 normalVector;
+out vec3 viewDir;
 out vec2 texCoord;
 out vec4 shadowCoord;
 
@@ -57,11 +58,13 @@ void main()
     vec3 pos = func(inPosition.x, inPosition.y);
     gl_Position = uProj * uView * uModel * vec4(pos, 1);
 
-
     lightVector = lightPosition - pos;
     normalVector = getNormal(inPosition.x, inPosition.y);
     normalVector = inverse(transpose(mat3(uView * uModel))) * normalVector;
     texCoord = inPosition;
+
+    vec4 viewPos = uView * uModel * vec4(pos, 0.0);
+    viewDir = -viewPos.xyz;
 
     mat4 depthBiasMVP = biasMatrix * uVPLight;
     shadowCoord = depthBiasMVP * (uModel * vec4(pos, 1));

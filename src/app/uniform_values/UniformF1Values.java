@@ -4,8 +4,8 @@ import static org.lwjgl.opengl.GL20.*;
 
 public class UniformF1Values extends UniformValues<Float> {
 
-    public UniformF1Values(String name, Float defaultValue, Float... values) {
-        super(name, defaultValue, values);
+    public UniformF1Values(String name, Float... values) {
+        super(name, values);
     }
 
     @Override
