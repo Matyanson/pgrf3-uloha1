@@ -63,7 +63,7 @@ public class Renderer extends AbstractRenderer {
 
         // Default camera
         Camera defCamera = new Camera()
-                .withPosition(new Vec3D(0, 0, 0))
+                .withPosition(new Vec3D(0, 0, 2))
                 .withAzimuth(Math.toRadians(90))
                 .withZenith(Math.toRadians(-75))
                 .withFirstPerson(false)
@@ -73,7 +73,7 @@ public class Renderer extends AbstractRenderer {
         sceneWindowList.add(new SceneWindow(width, height, defCamera, defProjPersp, defProjOrth));
 
         // Shadow mapping camera
-        Vec3D lightPosition = new Vec3D(0, 0, 10);
+        Vec3D lightPosition = new Vec3D(1, 0, 10);
         Camera cameraLight = new Camera()
                 .withPosition(lightPosition)
                 .withAzimuth(Math.toRadians(90))
@@ -92,36 +92,46 @@ public class Renderer extends AbstractRenderer {
         sphereRed.setModel(new Mat4Scale(0.5f, 0.5f, 0.5f).mul(new Mat4Transl(0f, 0, 1f)));
         Grid sphereBlue = new Grid(20, 20);
         sphereBlue.setModel(new Mat4Scale(0.4f, 0.4f, 0.4f).mul(new Mat4Transl(1f, 0, 0.4f)));
-        solids = Arrays.asList(axis, plane, planeStrip, sphereRed, sphereBlue);
+        Grid spikySphere = new Grid(100, 100);
+        spikySphere.setModel(new Mat4Scale(0.4f, 0.4f, 0.4f).mul(new Mat4Transl(0f, 1, 1f)));
+        Grid UFO = new Grid(100, 100);
+        UFO.setModel(new Mat4Scale(0.7f, 0.7f, 0.7f).mul(new Mat4Transl(2f, 0f, 1f)));
+        solids = Arrays.asList(axis, plane, planeStrip, sphereRed, sphereBlue, spikySphere, UFO);
 
         // Shader programs
         ShaderProgram programAxis = new ShaderProgram("/axis", 0);
-        ShaderProgram programGrid = new ShaderProgram("/grid", 1, 2, 3, 4);
+        ShaderProgram programGrid = new ShaderProgram("/grid", 1, 2, 3, 4, 5, 6);
         programGrid.addUniform(new UniformInt1Values("uUseShadowMap",
-                1, 1, 1, 1
+                1, 1, 1, 1, 1, 1
         ));
         programGrid.addUniform(new UniformInt1Values("uFuncType",
-                0, 0, 1, 1
+                0, 0, 1, 1, 2, 3
         ));
         programGrid.addUniform(new UniformInt1Values("uAnimateType",
-                0, 0, 0, 1
+                0, 0, 0, 1, 0, 2
         ));
         programGrid.addUniform(new UniformFValues("uBaseColor",
                 new Float[]{0.8f, 0.8f, 0.8f},
                 new Float[]{0.3f, 0.8f, 0.3f},
                 new Float[]{0.8f, 0.3f, 0.3f},
-                new Float[]{0.3f, 0.3f, 0.8f}
+                new Float[]{0.3f, 0.3f, 0.8f},
+                new Float[]{0.8f, 0.8f, 0.3f},
+                new Float[]{0.5f, 0.5f, 0.5f}
         ));
         programGrid.addUniform(new UniformF1Values( "uSpecStrength",
                 0.2f,
                 0.4f,
                 0.9f,
+                1f,
+                0.5f,
                 1f
         ));
         programGrid.addUniform(new UniformF1Values( "uShininess",
                 7f,
                 30f,
                 200f,
+                400f,
+                20f,
                 400f
         ));
         shaderPrograms = Arrays.asList(programAxis, programGrid);
