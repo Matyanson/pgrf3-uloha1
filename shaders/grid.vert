@@ -6,6 +6,7 @@ uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProj;
 uniform mat4 uVPLight;
+uniform vec3 uLightPos;
 uniform float uTime;
 uniform int uFuncType;
 
@@ -16,7 +17,7 @@ out vec2 texCoord;
 out vec4 shadowCoord;
 
 const float PI = 3.14159;
-const vec3 lightPosition = vec3(0.7, 0.3, 0.5);
+// const vec3 lightPosition = vec3(0.7, 0.3, 0.5);
 const mat4 biasMatrix = mat4(
 0.5, 0.0, 0.0, 0.0,
 0.0, 0.5, 0.0, 0.0,
@@ -58,11 +59,12 @@ void main()
     vec3 pos = func(inPosition.x, inPosition.y);
     gl_Position = uProj * uView * uModel * vec4(pos, 1);
 
-    lightVector = lightPosition - pos;
+    lightVector = uLightPos - pos;
     normalVector = getNormal(inPosition.x, inPosition.y);
     normalVector = inverse(transpose(mat3(uView * uModel))) * normalVector;
     texCoord = inPosition;
 
+    // vec4 viewPos = vec4(pos, 0.0);
     vec4 viewPos = uView * uModel * vec4(pos, 0.0);
     viewDir = -viewPos.xyz;
 

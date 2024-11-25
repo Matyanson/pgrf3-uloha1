@@ -77,8 +77,8 @@ public class Renderer extends AbstractRenderer {
                 .withAzimuth(Math.toRadians(90))
                 .withZenith(Math.toRadians(-90))
                 .withFirstPerson(true);
-        Mat4 projLight = new Mat4OrthoRH(5, 5, 1, 20);
-        Mat4 projOrthLight = new Mat4OrthoRH(1, 1, 0.1, 100);
+        Mat4PerspRH projLight = new Mat4PerspRH(Math.toRadians(45), height / (float) width, 1, 2);
+        Mat4 projOrthLight = new Mat4OrthoRH(5, 5, 1, 20);
         sceneWindowList.add(new SceneWindow(width, height, cameraLight, projLight, projOrthLight));
 
         // Solids
@@ -194,6 +194,17 @@ public class Renderer extends AbstractRenderer {
                     false,
                     lightWindow.getView().mul(lightWindow.getProjection()).floatArray()
             );
+            // save light position to uniform
+            Vec3D lightPosition = lightWindow.getCamera().getPosition();
+            glUniformMatrix4fv(
+                    glGetUniformLocation(program.getProgramID(), "uLightPos"),
+                    false,
+                    new float[]{
+                            (float)lightPosition.getX(),
+                            (float)lightPosition.getY(),
+                            (float)lightPosition.getZ()
+                    }
+            );
         }
     }
 
@@ -203,6 +214,7 @@ public class Renderer extends AbstractRenderer {
 
         int locUProj = glGetUniformLocation(shaderProgram, "uProj");
         glUniformMatrix4fv(locUProj, false, sceneWindow.getProjection().floatArray());
+
     }
     private void setModelUniform(int shaderProgram, Solid solid) {
         int locUModel = glGetUniformLocation(shaderProgram, "uModel");
