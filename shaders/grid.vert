@@ -7,7 +7,7 @@ uniform mat4 uView;
 uniform mat4 uProj;
 uniform mat4 uVPLight;
 uniform vec3 uLightPos;
-uniform vec3 uViewPos;
+uniform vec3 uCameraPos;
 uniform float uTime;
 uniform int uFuncType;
 uniform int uAnimateType;
@@ -16,6 +16,7 @@ out vec3 lightVector;
 out vec3 normalVector;
 out vec3 viewVector;
 out vec2 texCoord;
+out vec4 viewCoord;
 out vec4 shadowCoord;
 
 const float PI = 3.14159;
@@ -78,6 +79,7 @@ void main()
 
     vec4 worldPos = vec4(pos, 1.0);
     worldPos = uModel * worldPos;
+    viewCoord = uView * worldPos;
     gl_Position = uProj * uView * worldPos;
 
 
@@ -88,7 +90,7 @@ void main()
     vec3 lightVectorWorld = uLightPos - worldPos.xyz;
     lightVector = mat3(uView) * lightVectorWorld;
 
-    vec3 viewVectorWorld = uViewPos - worldPos.xyz;
+    vec3 viewVectorWorld = uCameraPos - worldPos.xyz;
     viewVector = mat3(uView) * viewVectorWorld;
 
 

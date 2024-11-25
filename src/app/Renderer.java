@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import static app.EColorMode.DEFAULT;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL20.*;
@@ -49,6 +50,7 @@ public class Renderer extends AbstractRenderer {
 
     // Other Controls
     int polygonMode = GL_FILL;
+    EColorMode colorMode = DEFAULT;
     private long lastTime = 0;
 
 
@@ -221,15 +223,18 @@ public class Renderer extends AbstractRenderer {
         );
 
         // save cam position to uniform
-        int locUViewPos = glGetUniformLocation(shaderProgram, "uViewPos");
+        int locuCameraPos = glGetUniformLocation(shaderProgram, "uCameraPos");
         Vec3D camPosition = sceneWindow.getCamera().getPosition();
-        glUniform3f(locUViewPos,
+        glUniform3f(locuCameraPos,
                 (float)camPosition.getX(), (float)camPosition.getY(), (float)camPosition.getZ()
         );
 
         float time = (float)lastTime / 1_000_000_000.0f;
         int locUTime = glGetUniformLocation(shaderProgram, "uTime");
         glUniform1f(locUTime, time);
+
+        int locUColorMode = glGetUniformLocation(shaderProgram, "uColorMode");
+        glUniform1i(locUColorMode, colorMode.ordinal());
 
     }
     private void setModelUniform(int shaderProgram, Solid solid) {
@@ -337,6 +342,13 @@ public class Renderer extends AbstractRenderer {
                                     selectedWindowIndex = 0;
                                 } else {
                                     selectedWindowIndex++;
+                                }
+                                break;
+                            case GLFW_KEY_N:
+                                if (colorMode.ordinal() >= EColorMode.values().length - 1) {
+                                    colorMode = EColorMode.values()[0]; // Set to the first enum value
+                                } else {
+                                    colorMode = EColorMode.values()[colorMode.ordinal() + 1]; // Increment to the next enum value
                                 }
                                 break;
                             case GLFW_KEY_W:
