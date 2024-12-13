@@ -1,9 +1,6 @@
 package app;
 
-import app.solid.Axis;
-import app.solid.Grid;
-import app.solid.GridStrip;
-import app.solid.Solid;
+import app.solid.*;
 import app.uniform_values.UniformF1Values;
 import app.uniform_values.UniformFValues;
 import app.uniform_values.UniformInt1Values;
@@ -15,6 +12,7 @@ import org.lwjgl.glfw.GLFWMouseButtonCallback;
 import org.lwjgl.glfw.GLFWScrollCallback;
 import transforms.*;
 
+import java.io.IOException;
 import java.nio.DoubleBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,6 +40,12 @@ public class Renderer extends AbstractRenderer {
     // Shadow mapping
     private OGLTexture2D.Viewer viewer;
 
+    // Texture
+    OGLTexture2D textureNoise;
+
+    // Wall
+    Mat4 wallMat;
+
     // Camera Controls
     boolean mouseButton1 = false;
     int selectedWindowIndex = 0;
@@ -51,7 +55,7 @@ public class Renderer extends AbstractRenderer {
     // Other Controls
     int polygonMode = GL_FILL;
     EColorMode colorMode = DEFAULT;
-    private long lastTime = 0;
+    private long time = 0;
 
 
     public void init() {
@@ -59,7 +63,8 @@ public class Renderer extends AbstractRenderer {
         glClearColor(0.1f, 0.1f, 0.1f, 2.0f);
         glEnable(GL_DEPTH_TEST);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        lastTime = System.nanoTime();
+        time = System.nanoTime();
+        glPointSize(1.0f);
 
         // Default camera
         Camera defCamera = new Camera()
@@ -85,59 +90,53 @@ public class Renderer extends AbstractRenderer {
 
         // Solids
         Axis axis = new Axis();
-        Grid plane = new Grid(20, 20);
-        GridStrip planeStrip = new GridStrip(20, 20);
-        planeStrip.setModel(new Mat4Transl(2f, 0f, 0f));
-        Grid sphereRed = new Grid(100, 100);
-        sphereRed.setModel(new Mat4Scale(0.5f, 0.5f, 0.5f).mul(new Mat4Transl(0f, 0, 1f)));
-        Grid sphereBlue = new Grid(20, 20);
-        sphereBlue.setModel(new Mat4Scale(0.4f, 0.4f, 0.4f).mul(new Mat4Transl(1f, 0, 0.4f)));
-        Grid spikySphere = new Grid(100, 100);
-        spikySphere.setModel(new Mat4Scale(0.4f, 0.4f, 0.4f).mul(new Mat4Transl(0f, 1, 1f)));
-        Grid UFO = new Grid(100, 100);
-        UFO.setModel(new Mat4Scale(0.7f, 0.7f, 0.7f).mul(new Mat4Transl(2f, 0f, 1f)));
-        solids = Arrays.asList(axis, plane, planeStrip, sphereRed, sphereBlue, spikySphere, UFO);
+        Grid plane = new Grid(2, 2);
+        Flame flame = new Flame(1_000_000);
+        Grid wall = new Grid(2, 2);
+        wallMat = new Mat4RotX(Math.toRadians(-85)).mul(new Mat4Transl(0.0, 0.5, 0));
+        wall.setModel(wallMat);
+        solids = Arrays.asList(axis, plane, flame, wall);
 
         // Shader programs
         ShaderProgram programAxis = new ShaderProgram("/axis", 0);
-        ShaderProgram programGrid = new ShaderProgram("/grid", 1, 2, 3, 4, 5, 6);
-        programGrid.addUniform(new UniformInt1Values("uUseShadowMap",
-                1, 1, 1, 1, 1, 1
-        ));
-        programGrid.addUniform(new UniformInt1Values("uFuncType",
-                0, 0, 1, 1, 2, 3
-        ));
+
+        ShaderProgram programGrid = new ShaderProgram("/grid", 1, 3);
         programGrid.addUniform(new UniformInt1Values("uAnimateType",
-                0, 0, 0, 1, 0, 2
+                0, 0
         ));
         programGrid.addUniform(new UniformFValues("uBaseColor",
                 new Float[]{0.8f, 0.8f, 0.8f},
-                new Float[]{0.3f, 0.8f, 0.3f},
-                new Float[]{0.8f, 0.3f, 0.3f},
-                new Float[]{0.3f, 0.3f, 0.8f},
-                new Float[]{0.8f, 0.8f, 0.3f},
-                new Float[]{0.5f, 0.5f, 0.5f}
+                new Float[]{0.8f, 0.8f, 0.5f}
         ));
         programGrid.addUniform(new UniformF1Values( "uSpecStrength",
-                0.2f,
-                0.4f,
-                0.9f,
-                1f,
-                0.5f,
-                1f
+                0.2f, 0.1f
         ));
         programGrid.addUniform(new UniformF1Values( "uShininess",
-                7f,
-                30f,
-                200f,
-                400f,
-                20f,
-                400f
+                7f, 5f
         ));
-        shaderPrograms = Arrays.asList(programAxis, programGrid);
+
+        ShaderProgram programFlame = new ShaderProgram("/flame", 2);
+        programFlame.addUniform(new UniformF1Values("uLifespan",
+                3.0f
+        ));
+        programFlame.addUniform(new UniformF1Values("uMinRange",
+                1.0f
+        ));
+        programFlame.addUniform(new UniformF1Values("uMaxRange",
+                2.0f
+        ));
+
+        shaderPrograms = Arrays.asList(programAxis, programGrid, programFlame);
 
         // Viewer to display other textures
         viewer = new OGLTexture2D.Viewer();
+
+        // Textures
+        try {
+            textureNoise = new OGLTexture2D("textures/noise_normalized.png");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void display() {
@@ -152,18 +151,10 @@ public class Renderer extends AbstractRenderer {
         viewer.view(lightWindow.getRenderTarget().getDepthTexture(), -1, -1, 0.5);
 
         // update time
-        long currentTime = System.nanoTime();
-        float dt = (currentTime - lastTime) / 1_000_000_000.0f;
-        lastTime = currentTime;
-        animate(dt);
-    }
+        time = System.nanoTime();
 
-    private void animate(float dt) {
-        float time = (float)lastTime / 1_000_000_000.0f;
-        float xPosition = (float) Math.sin(time) * 1f;
-        float yPosition = (float) Math.cos(time) * 0.5f;
-        Solid solid = solids.get(3);
-        solid.setModel(new Mat4Scale(0.5f, 0.5f, 0.5f).mul(new Mat4Transl(xPosition, yPosition, 1f)));
+        // setup textures
+        textureNoise.bind(shaderPrograms.get(2).getProgramID(), "textureNoise", 1);
     }
 
 
@@ -233,20 +224,22 @@ public class Renderer extends AbstractRenderer {
         );
 
         // save cam position to uniform
-        int locuCameraPos = glGetUniformLocation(shaderProgram, "uCameraPos");
+        int locUCameraPos = glGetUniformLocation(shaderProgram, "uCameraPos");
         Vec3D camPosition = sceneWindow.getCamera().getPosition();
-        glUniform3f(locuCameraPos,
+        glUniform3f(locUCameraPos,
                 (float)camPosition.getX(), (float)camPosition.getY(), (float)camPosition.getZ()
         );
 
-        float time = (float)lastTime / 1_000_000_000.0f;
         int locUTime = glGetUniformLocation(shaderProgram, "uTime");
-        glUniform1f(locUTime, time);
+        glUniform1f(locUTime, time / 1_000_000_000.0f);
 
         int locUColorMode = glGetUniformLocation(shaderProgram, "uColorMode");
         glUniform1i(locUColorMode, colorMode.ordinal());
 
+        int locUWallModel = glGetUniformLocation(shaderProgram, "uWallModel");
+        glUniformMatrix4fv(locUWallModel, false, wallMat.floatArray());
     }
+
     private void setModelUniform(int shaderProgram, Solid solid) {
         int locUModel = glGetUniformLocation(shaderProgram, "uModel");
         glUniformMatrix4fv(locUModel, false, solid.getModel().floatArray());

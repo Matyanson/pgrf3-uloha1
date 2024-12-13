@@ -14,6 +14,7 @@ uniform float uShininess;
 uniform sampler2D shadowMap;
 uniform int uUseShadowMap;
 uniform int uColorMode;
+uniform sampler2D textureNoise;
 
 out vec4 outColor;
 
@@ -26,6 +27,7 @@ void main()
 
     // Base color
     vec3 baseColor = uBaseColor;
+    // vec3 baseColor = texture(textureNoise, texCoord).xyz;
 
     // Light color
     vec3 lightColor = vec3(0.8, 0.8, 0.7);
