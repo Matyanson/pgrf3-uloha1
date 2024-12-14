@@ -153,10 +153,15 @@ public class Renderer extends AbstractRenderer {
         // update time
         time = System.nanoTime();
 
-        // setup textures
-        textureNoise.bind(shaderPrograms.get(2).getProgramID(), "textureNoise", 1);
+        setupTextures();
     }
 
+    private void setupTextures() {
+        // setup textures
+        textureNoise.bind(shaderPrograms.get(2).getProgramID(), "textureNoise", 1);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    }
 
     private void drawScene(int sceneWindowIndex) {
         // Bind buffer / renderTarget
