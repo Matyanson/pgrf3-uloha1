@@ -7,7 +7,8 @@ uniform mat4 uView;
 uniform mat4 uProj;
 uniform mat4 uWallModel;
 uniform float uTime;
-uniform float uLifespan;
+uniform float uMinSpeed;
+uniform float uMaxSpeed;
 uniform float uMinRange;
 uniform float uMaxRange;
 uniform sampler2D textureNoise;
@@ -56,24 +57,31 @@ vec3 adjustForReflection(vec3 line, vec3 origin) {
 
 void main() {
     // setup variables
-    float localTime = uTime + inTimeOffset * uLifespan;
     float genMax = 100.0; // texture height
 
     // speed
-    float speedNorm = texture(textureNoise, getPosFromNormIndex(inNormalizedIndex, genMax)).x;
-    float speed = mix(uMinRange, uMaxRange, speedNorm);
+    float rnd = texture(textureNoise, getPosFromNormIndex(inNormalizedIndex, genMax)).x;
+    float speed = mix(uMinSpeed, uMaxSpeed, rnd);
+
+    // distance
+    rnd = texture(textureNoise, getPosFromNormIndex(inNormalizedIndex, genMax)).y;
+    float dist = mix(uMinRange, uMaxRange, rnd);
+
+    // lifespan
+    float lifespan = dist / speed;
 
     // timing
-    float age = mod(localTime, uLifespan);
-    float t = age / uLifespan;
-    float generation = localTime / uLifespan;
+    float localTime = uTime + inTimeOffset * lifespan;
+    float age = mod(localTime, lifespan);
+    float t = age / lifespan;
+    float generation = localTime / lifespan;
     float genT = mod(generation, genMax) / genMax;
 
     // direction
     vec2 noiseCoords = vec2(inNormalizedIndex, genT);
     vec3 direction = texture(textureNoise, noiseCoords).xyz;
 
-    vec3 position = direction * t * speed;
+    vec3 position = direction * dist * t;
     position = adjustForReflection(position, vec3(0.0));
     gl_Position = uProj * uView * vec4(position, 1.0);
 

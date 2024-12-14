@@ -64,7 +64,7 @@ public class Renderer extends AbstractRenderer {
         glEnable(GL_DEPTH_TEST);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         time = System.nanoTime();
-        glPointSize(1.0f);
+        glPointSize(5.0f);
 
         // Default camera
         Camera defCamera = new Camera()
@@ -91,9 +91,9 @@ public class Renderer extends AbstractRenderer {
         // Solids
         Axis axis = new Axis();
         Grid plane = new Grid(2, 2);
-        Flame flame = new Flame(1_000_000);
+        Flame flame = new Flame(1_000);
         Grid wall = new Grid(2, 2);
-        wallMat = new Mat4RotX(Math.toRadians(-85)).mul(new Mat4Transl(0.0, 0.5, 0));
+        wallMat = new Mat4RotX(Math.toRadians(90)).mul(new Mat4Transl(0.0, 0.7, -0.5));
         wall.setModel(wallMat);
         solids = Arrays.asList(axis, plane, flame, wall);
 
@@ -116,8 +116,11 @@ public class Renderer extends AbstractRenderer {
         ));
 
         ShaderProgram programFlame = new ShaderProgram("/flame", 2);
-        programFlame.addUniform(new UniformF1Values("uLifespan",
-                3.0f
+        programFlame.addUniform(new UniformF1Values("uMinSpeed",
+                0.2f
+        ));
+        programFlame.addUniform(new UniformF1Values("uMaxSpeed",
+                0.5f
         ));
         programFlame.addUniform(new UniformF1Values("uMinRange",
                 1.0f
