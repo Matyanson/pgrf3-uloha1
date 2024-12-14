@@ -13,7 +13,7 @@ uniform float uMinRange;
 uniform float uMaxRange;
 uniform sampler2D textureNoise;
 
-out vec3 color;
+out vec4 color;
 
 vec2 getPosFromNormIndex(float index, float rowCount) {
     return vec2(mod(index * rowCount, 1.0), index * rowCount);
@@ -85,5 +85,5 @@ void main() {
     position = adjustForReflection(position, vec3(0.0));
     gl_Position = uProj * uView * vec4(position, 1.0);
 
-    color = vec3(0.7, 0.7 * (1.0 - t), 0.0);
+    color = vec4(0.7, 0.7 * (1.0 - t), 0.0, (1.0 - t*t));
 }
